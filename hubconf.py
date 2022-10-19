@@ -7,6 +7,8 @@ from torch.utils.data import DataLoader
 import torch.nn as nn
 from torch import optim
 from torch.autograd import Variable
+from torchmetrics.functional import precision_recall
+from sklearn.metrics import precision_score, recall_score, f1_score
 
 # Device configuration
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -204,18 +206,23 @@ def get_model_advanced(train_data_loader=None, n_epochs=10,lr=1e-4,config=None):
         sample_data = sample_image
         break
     model = MyModule(config, sample_data)    
-    print ('Returning model... (rollnumber: xx)')
+    print ('Returning model... (rollnumber: cs19b012)')
     return model
 
     # sample invocation torch.hub.load(myrepo,'test_model',model1=model,test_data_loader=test_data_loader,force_reload=True)
 def test_model(model1=None, test_data_loader=None):
 
     accuracy_val, precision_val, recall_val, f1score_val = 0, 0, 0, 0
-    # write your code here as per instructions
-    # ... your code ...
-    # ... your code ...
-    # ... and so on ...
-    # calculate accuracy, precision, recall and f1score
+    for image, label in test_data_loader:
+        image = Variable(image)
+        label = Variable(label)
+        output = model1(image)
+        _, predicted = torch.max(output.data, 1)
+        accuracy_val += (predicted == label).sum().item()
+        precision_val += precision_score(label, predicted, average='macro')
+        recall_val += recall_score(label, predicted, average='macro')
+        f1score_val += f1_score(label, predicted, average='macro')
+    # precision_val, recall_val = precision_recall(preds, target, average='macro', num_classes=3)
     
     print ('Returning metrics... (rollnumber: xx)')
     
