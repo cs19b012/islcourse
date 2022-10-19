@@ -11,39 +11,14 @@ from torch.autograd import Variable
 # Device configuration
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-
-def load_data():
-
-    train_data = datasets.FashionMNIST(
-    root = 'data',
-    train = True,                         
-    transform = ToTensor(), 
-    download = True,            
-    )
-    test_data = datasets.FashionMNIST(
-        root = 'data', 
-        train = False, 
-        transform = ToTensor()
-    )
-
-    return train_data, test_data
-    
-def get_dataloaders(train_data, test_data):
-    loaders = {
-    'train' : torch.utils.data.DataLoader(train_data, 
-                                          batch_size=100, 
-                                          shuffle=True, 
-                                          num_workers=1),
-    
-    'test'  : torch.utils.data.DataLoader(test_data, 
-                                          batch_size=100, 
-                                          shuffle=True, 
-                                          num_workers=1),
-    }
-    return loaders
+def kali():
+  print ('kali')
+  
+# Define a neural network YOUR ROLL NUMBER (all small letters) should prefix the classname
 
 
-class CNN(nn.Module):
+
+class cs19b012_CNN(nn.Module):
     def __init__(self):
         super(CNN, self).__init__()
         self.conv1 = nn.Sequential(         
@@ -72,23 +47,15 @@ class CNN(nn.Module):
         output = self.out(x)
         return output, x    # return x for visualization
 
-def get_model():
-    cnn = CNN()
-    loss_func = nn.CrossEntropyLoss()   
-    optimizer = optim.Adam(cnn.parameters(), lr = 0.01)   
-    return cnn, loss_func, optimizer
-
-    
-
-def train(cnn, loss_func, optimizer, loaders, num_epochs):
+def train(cnn, loss_func, optimizer, train_data_loader, num_epochs):
     # num_epochs = 10
     cnn.train()
         
     # Train the model
-    total_step = len(loaders['train'])
+    total_step = len(train_data_loader)
         
     for epoch in range(num_epochs):
-        for i, (images, labels) in enumerate(loaders['train']):
+        for i, (images, labels) in enumerate(train_data_loader):
             
             # gives batch data, normalize x when iterate train_loader
             b_x = Variable(images)   # batch x
@@ -113,22 +80,62 @@ def train(cnn, loss_func, optimizer, loaders, num_epochs):
     
     
     pass
-    PATH = './saved_models/FMNIST_model.pth'
-    torch.save(cnn.state_dict(), PATH)
+    # PATH = './saved_models/FMNIST_model.pth'
+    # torch.save(cnn.state_dict(), PATH)
+
+# sample invocation torch.hub.load(myrepo,'get_model',train_data_loader=train_data_loader,n_epochs=5, force_reload=True)
+def get_model(train_data_loader=None, n_epochs=10):
+    model = cs19b012_CNN()
+    loss_func = nn.CrossEntropyLoss()   
+    optimizer = optim.Adam(model.parameters(), lr = 0.01)   
+    # return cnn, loss_func, optimizer
+    train(model, loss_func, optimizer, train_data_loader, n_epochs)
 
 
-def my_test(cnn, loaders):
-    # Test the model
-    cnn.eval()
-    with torch.no_grad():
-        correct = 0
-        total = 0
-        for images, labels in loaders['test']:
-            test_output, last_layer = cnn(images)
-            pred_y = torch.max(test_output, 1)[1].data.squeeze()
-            accuracy = (pred_y == labels).sum().item() / float(labels.size(0))
-            pass
-        print('Test Accuracy of the model on the 10000 test images: %.2f' % accuracy)
+  # Use softmax and cross entropy loss functions
+  # set model variable to proper object, make use of train_data
+  
+    print ('Returning model... (rollnumber: xx)')
+  
+    return model
+
+# sample invocation torch.hub.load(myrepo,'get_model_advanced',train_data_loader=train_data_loader,n_epochs=5, force_reload=True)
+def get_model_advanced(train_data_loader=None, n_epochs=10,lr=1e-4,config=None):
+    model = None
+
+  # write your code here as per instructions
+  # ... your code ...
+  # ... your code ...
+  # ... and so on ...
+  # Use softmax and cross entropy loss functions
+  # set model variable to proper object, make use of train_data
+  
+  # In addition,
+  # Refer to config dict, where learning rate is given, 
+  # List of (in_channels, out_channels, kernel_size, stride=1, padding='same')  are specified
+  # Example, config = [(1,10,(3,3),1,'same'), (10,3,(5,5),1,'same'), (3,1,(7,7),1,'same')], it can have any number of elements
+  # You need to create 2d convoution layers as per specification above in each element
+  # You need to add a proper fully connected layer as the last layer
+  
+  # HINT: You can print sizes of tensors to get an idea of the size of the fc layer required
+  # HINT: Flatten function can also be used if required
+    return model
     
-        pass
+    
+    print ('Returning model... (rollnumber: xx)')
+    
+    return model
 
+    # sample invocation torch.hub.load(myrepo,'test_model',model1=model,test_data_loader=test_data_loader,force_reload=True)
+    def test_model(model1=None, test_data_loader=None):
+
+    accuracy_val, precision_val, recall_val, f1score_val = 0, 0, 0, 0
+    # write your code here as per instructions
+    # ... your code ...
+    # ... your code ...
+    # ... and so on ...
+    # calculate accuracy, precision, recall and f1score
+    
+    print ('Returning metrics... (rollnumber: xx)')
+    
+    return accuracy_val, precision_val, recall_val, f1score_val
