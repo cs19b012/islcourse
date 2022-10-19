@@ -169,30 +169,42 @@ def get_model(train_data_loader=None, n_epochs=10):
     return model
 
 # sample invocation torch.hub.load(myrepo,'get_model_advanced',train_data_loader=train_data_loader,n_epochs=5, force_reload=True)
-def get_model_advanced(train_data_loader=None, n_epochs=10,lr=1e-4,config=None):
-    model = None
 
-  # write your code here as per instructions
-  # ... your code ...
-  # ... your code ...
-  # ... and so on ...
-  # Use softmax and cross entropy loss functions
-  # set model variable to proper object, make use of train_data
-  
-  # In addition,
-  # Refer to config dict, where learning rate is given, 
-  # List of (in_channels, out_channels, kernel_size, stride=1, padding='same')  are specified
-  # Example, config = [(1,10,(3,3),1,'same'), (10,3,(5,5),1,'same'), (3,1,(7,7),1,'same')], it can have any number of elements
-  # You need to create 2d convoution layers as per specification above in each element
-  # You need to add a proper fully connected layer as the last layer
-  
-  # HINT: You can print sizes of tensors to get an idea of the size of the fc layer required
-  # HINT: Flatten function can also be used if required
-    return model
-    
-    
+class MyModule(nn.Module):
+    def __init__(self, config, sample_data):
+        super(MyModule, self).__init__()
+        self.layers = nn.ModuleList()
+        for (in_channels, out_channels, kernel_size, stride, padding) in config:
+          self.layers.append(nn.Conv2d(
+                in_channels=in_channels,              
+                out_channels=out_channels,            
+                kernel_size=kernel_size,              
+                stride=stride,                   
+                padding=padding,                  
+            ),     
+            )
+        # self.linears = nn.ModuleList([nn.Linear(10, 20) for _ in range(10)])
+        self.linear = nn.Linear(self.get_fc_size(sample_data),10)
+
+    def get_fc_size(self, x):
+        x = self.layers(x)
+        x = x.view(x.size(0), -1)
+        return x.shape
+
+    def forward(self, x, indices):
+        x = self.layers[indices](x) 
+        x = x.view(x.size(0), -1)
+        print("print the size", x.shape)
+        x = self.linear(x)
+        return x
+
+def get_model_advanced(train_data_loader=None, n_epochs=10,lr=1e-4,config=None):
+    for test_images, test_labels in train_data_loader:  
+        sample_image = test_images[0]    # Reshape them according to your needs.
+        sample_data = sample_image
+        break
+    model = MyModule(config, sample_data)    
     print ('Returning model... (rollnumber: xx)')
-    
     return model
 
     # sample invocation torch.hub.load(myrepo,'test_model',model1=model,test_data_loader=test_data_loader,force_reload=True)
