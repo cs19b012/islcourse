@@ -15,8 +15,38 @@ def kali():
   print ('kali')
   
 # Define a neural network YOUR ROLL NUMBER (all small letters) should prefix the classname
-
-
+# This function is used to programatically identify the size of the fully connected layer and return it
+class test_CNN(nn.Module):
+    def __init__(self):
+        super(test_CNN, self).__init__()
+        self.conv1 = nn.Sequential(         
+            nn.Conv2d(
+                in_channels=1,              
+                out_channels=16,            
+                kernel_size=5,              
+                stride=1,                   
+                padding=2,                  
+            ),                              
+            nn.ReLU(),                      
+            nn.MaxPool2d(kernel_size=2),    
+        )
+        self.conv2 = nn.Sequential(         
+            nn.Conv2d(16, 32, 5, 1, 2),     
+            nn.ReLU(),                      
+            nn.MaxPool2d(2),                
+        )
+        # fully connected layer, output 10 classes
+        # self.out = nn.Linear(32 * 7 * 7, 10)
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.conv2(x)
+        # flatten the output of conv2 to (batch_size, 32 * 7 * 7)
+        x = x.view(x.size(0), -1)
+        print("PRINTING THE SIZE")
+        print(x.shape) 
+        return x.shape[1]      
+        # output = self.out(x)
+        # return output, x    # return x for visualization
 
 class cs19b012_CNN(nn.Module):
     def __init__(self):
@@ -44,6 +74,40 @@ class cs19b012_CNN(nn.Module):
         x = self.conv2(x)
         # flatten the output of conv2 to (batch_size, 32 * 7 * 7)
         x = x.view(x.size(0), -1)       
+        output = self.out(x)
+        return output, x    # return x for visualization
+
+class cs19b012_CNN(nn.Module):
+    def __init__(self, sample_data):
+        super(cs19b012_CNN, self).__init__()
+        self.conv1 = nn.Sequential(         
+            nn.Conv2d(
+                in_channels=1,              
+                out_channels=16,            
+                kernel_size=5,              
+                stride=1,                   
+                padding=2,                  
+            ),                              
+            nn.ReLU(),                      
+            nn.MaxPool2d(kernel_size=2),    
+        )
+        self.conv2 = nn.Sequential(         
+            nn.Conv2d(16, 32, 5, 1, 2),     
+            nn.ReLU(),                      
+            nn.MaxPool2d(2),                
+        )
+        # fully connected layer, output 10 classes
+        test_model = test_CNN()
+        fc_size = test_model.forward(sample_data)
+        # print(sample_data)
+        self.out = nn.Linear(32 * 7 * 7, 10)
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.conv2(x)
+        # flatten the output of conv2 to (batch_size, 32 * 7 * 7)
+        x = x.view(x.size(0), -1)
+        # print("PRINTING THE SIZE")
+        # print(x.shape)       
         output = self.out(x)
         return output, x    # return x for visualization
 
@@ -85,7 +149,12 @@ def train(cnn, loss_func, optimizer, train_data_loader, num_epochs):
 
 # sample invocation torch.hub.load(myrepo,'get_model',train_data_loader=train_data_loader,n_epochs=5, force_reload=True)
 def get_model(train_data_loader=None, n_epochs=10):
-    model = cs19b012_CNN()
+    sample_data = None
+    for test_images, test_labels in train_data_loader:  
+        sample_image = test_images[0]    # Reshape them according to your needs.
+        sample_data = sample_image
+    
+    model = cs19b012_CNN(sample_data)
     loss_func = nn.CrossEntropyLoss()   
     optimizer = optim.Adam(model.parameters(), lr = 0.01)   
     # return cnn, loss_func, optimizer
@@ -95,7 +164,7 @@ def get_model(train_data_loader=None, n_epochs=10):
   # Use softmax and cross entropy loss functions
   # set model variable to proper object, make use of train_data
   
-    print ('Returning model... (rollnumber: xx)')
+    print ('Returning model... (rollnumber: cs19b012)')
   
     return model
 
