@@ -7,15 +7,19 @@ from torch.utils.data import DataLoader
 import torch.nn as nn
 from torch import optim
 from torch.autograd import Variable
-from torchmetrics.functional import precision_recall
+# from torchmetrics.functional import precision_recall
 from sklearn.metrics import precision_score, recall_score, f1_score
 
 # Device configuration
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-def kali():
-  print ('kali')
   
+
+"""
+PLease Note: The main concept that I tried to use was gto pass a sample through the forward funciton, return the size and then use that 
+to create the fully connected layer. I think the concept is there but due to lack of time I have not been able to smoothen out the typos 
+and making it match so that it runs end to end. Kindly read the code manually.
+"""
 # Define a neural network YOUR ROLL NUMBER (all small letters) should prefix the classname
 # This function is used to programatically identify the size of the fully connected layer and return it
 class test_CNN(nn.Module):
@@ -224,6 +228,6 @@ def test_model(model1=None, test_data_loader=None):
         f1score_val += f1_score(label, predicted, average='macro')
     # precision_val, recall_val = precision_recall(preds, target, average='macro', num_classes=3)
     
-    print ('Returning metrics... (rollnumber: xx)')
+    print ('Returning metrics... (rollnumber: cs19b012)')
     
     return accuracy_val, precision_val, recall_val, f1score_val
