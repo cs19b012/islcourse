@@ -20,7 +20,7 @@ def kali():
 
 class cs19b012_CNN(nn.Module):
     def __init__(self):
-        super(CNN, self).__init__()
+        super(cs19b012_CNN, self).__init__()
         self.conv1 = nn.Sequential(         
             nn.Conv2d(
                 in_channels=1,              
@@ -127,7 +127,7 @@ def get_model_advanced(train_data_loader=None, n_epochs=10,lr=1e-4,config=None):
     return model
 
     # sample invocation torch.hub.load(myrepo,'test_model',model1=model,test_data_loader=test_data_loader,force_reload=True)
-    def test_model(model1=None, test_data_loader=None):
+def test_model(model1=None, test_data_loader=None):
 
     accuracy_val, precision_val, recall_val, f1score_val = 0, 0, 0, 0
     # write your code here as per instructions
