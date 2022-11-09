@@ -130,18 +130,18 @@ def log_softmax(x):
 
 def my_loss(output, target):
     num_examples = target.shape[0]
-    batch_size = outputs.shape[0]
+    batch_size = output.shape[0]
     output = log_softmax(output)
     output = output[range(batch_size), target]
     return - torch.sum(output)/num_examples
 
 
 # Function to determine input size
-def determine_size(data_loader):
+def determine_size(data_loader, config):
     fc_size = 20000
     model = ConfigNeuralNet(config, fc_size, num_classes).to(device)
 
-    for x, _ in test_dataloader:
+    for x, _ in data_loader:
       data_point = x[0].to(device)
       dims = model.return_dims(data_point)
       print(dims)
@@ -213,7 +213,7 @@ def evaluate():
         )
     print(ordered_dict)
     config = ordered_dict
-    fc_size = determine_size(test_dataloader)
+    fc_size = determine_size(test_dataloader, config)
     model = ConfigNeuralNet(config, fc_size, num_classes).to(device)
     # model = NeuralNet(20000, num_classes).to(device)
     # Loss and optimizer
