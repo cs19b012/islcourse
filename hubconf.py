@@ -12,6 +12,8 @@ import torch.optim as optim
 ###### PART 1 ######-----------------------------------------------------------------------------------
 
 from sklearn.datasets import make_blobs, make_circles
+from sklearn.cluster import KMeans
+from sklearn.metrics import homogeneity_completeness_v_measure
 def get_data_blobs(n_points=100):
   # write your code here
   # Refer to sklearn data sets
@@ -34,25 +36,21 @@ def get_data_mnist():
   return X,y
 
 def build_kmeans(X=None,k=10):
-  pass
   # k is a variable, calling function can give a different number
   # Refer to sklearn KMeans method
-  km = None # this is the KMeans object
-  # write your code ...
+  km = KMeans(n_clusters=k, random_state=0).fit(X)
   return km
 
 def assign_kmeans(km=None,X=None):
-  pass
   # For each of the points in X, assign one of the means
   # refer to predict() function of the KMeans in sklearn
-  # write your code ...
-  ypred = None
+  ypred = km.predict(X)
   return ypred
 
 def compare_clusterings(ypred_1=None,ypred_2=None):
-  pass
   # refer to sklearn documentation for homogeneity, completeness and vscore
   h,c,v = 0,0,0 # you need to write your code to find proper values
+  h,c,v = homogeneity_completeness_v_measure(ypred_1, ypred_2, beta=1.0)
   return h,c,v
 
 ###### PART 2 ######-------------------------------------------------------------------------------------
