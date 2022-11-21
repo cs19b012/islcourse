@@ -47,41 +47,49 @@ def compare_clusterings(ypred_1=None,ypred_2=None):
 
 ###### PART 2 ######-------------------------------------------------------------------------------------
 
+import numpy as np
 from sklearn.datasets import load_digits
 from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
+from sklearn.model_selection import GridSearchCV
 
 def get_data_mnist():
-  # write your code here
   # Refer to sklearn data sets
   X,y = load_digits(return_X_y=True)
   return X,y
 
 def build_lr_model(X=None, y=None):
   lr_model = LogisticRegression()
-  # write your code...
+  lr_model.fit(X,y)
   # Build logistic regression, refer to sklearn
   return lr_model
 
 def build_rf_model(X=None, y=None):
-  pass
-  rf_model = None
-  # write your code...
+  rf_model = RandomForestClassifier(random_state=0)
+  rf_model.fit(X,y)
   # Build Random Forest classifier, refer to sklearn
   return rf_model
 
 def get_metrics(model=None,X=None,y=None):
-  pass
   # Obtain accuracy, precision, recall, f1score, auc score - refer to sklearn metrics
+  y_true = y
+  y_pred = model.predict(X)
   acc, prec, rec, f1, auc = 0,0,0,0,0
-  # write your code here...
+  acc = accuracy_score(y_true, y_pred)
+  prec = precision_score(y_true, y_pred, average='macro')
+  rec = recall_score(y_true, y_pred, average='macro')
+  f1 = f1_score(y_true, y_pred, average='macro')
+  y_pred = model.predict_proba(X)
+  # y_pred = np.transpose([pred[:, 1] for pred in y_pred])
+  auc = roc_auc_score(y_true, y_pred, average='macro', multi_class='ovr')
   return acc, prec, rec, f1, auc
 
 def get_paramgrid_lr():
   # you need to return parameter grid dictionary for use in grid search cv
   # penalty: l1 or l2
-  lr_param_grid = None
+  lr_param_grid = {'penalty':['l2', None]}
   # refer to sklearn documentation on grid search and logistic regression
-  # write your code here...
   return lr_param_grid
 
 def get_paramgrid_rf():
@@ -89,30 +97,37 @@ def get_paramgrid_rf():
   # n_estimators: 1, 10, 100
   # criterion: gini, entropy
   # maximum depth: 1, 10, None  
-  rf_param_grid = None
+  rf_param_grid = {'n_estimators':[1,10,100],'max_depth':[1,10, None], 'criterion':['gini', 'entropy']}
   # refer to sklearn documentation on grid search and random forest classifier
-  # write your code here...
   return rf_param_grid
 
-def perform_gridsearch_cv_multimetric(model=None, param_grid=None, cv=5, X=None, y=None, metrics=['accuracy','roc_auc']):
-  
+def perform_gridsearch_cv_multimetric(model=None, param_grid=None, cv=5, X=None, y=None, metrics=['accuracy','roc_auc_ovr']):
   # you need to invoke sklearn grid search cv function
   # refer to sklearn documentation
   # the cv parameter can change, ie number of folds  
   
   # metrics = [] the evaluation program can change what metrics to choose
+
+  # This check is there because roc_auc does not work for multi class. We have to use roc_auc_ovr
+  for i in range (0, len(metrics)):
+    if metrics[i] == 'roc_auc':
+      metrics[i] ='roc_auc_ovr'
+
+  # print(metrics)
   
-  grid_search_cv = None
-  # create a grid search cv object
-  # fit the object on X and y input above
-  # write your code here...
+  grid_search_cv = GridSearchCV(estimator = model, param_grid = param_grid, scoring = metrics, refit = 'roc_auc_ovr')
+  grid_search_cv.fit(X,y)
   
   # metric of choice will be asked here, refer to the-scoring-parameter-defining-model-evaluation-rules of sklearn documentation
   
   # refer to cv_results_ dictonary
   # return top 1 score for each of the metrics given, in the order given in metrics=... list
+  data = grid_search_cv.cv_results_
+  # print(data)
   
   top1_scores = []
+  top1_scores.append(grid_search_cv.best_estimator_)
+  top1_scores.append(grid_search_cv.best_score_)
   
   return top1_scores
 
