@@ -1,445 +1,192 @@
-dependencies = ['torch']
+# kali
 import torch
-import torch.nn as nn 
-import torchvision
-import torchvision.transforms as transforms
-import matplotlib.pyplot as plt 
-import numpy as np
-from sklearn.metrics import classification_report
-from torch.utils.data import Dataset, DataLoader
-from torchvision import datasets
-from torchvision.transforms import ToTensor, ToPILImage
-from PIL import Image
-from torch import optim
-from torch.autograd import Variable
-from collections import OrderedDict
-# Device configuration
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+from torch import nn
+import torch.optim as optim
 
-transform_tensor_to_pil = ToPILImage()
-transform_pil_to_tensor = ToTensor()
+# You can import whatever standard packages are required
 
-# input_size = 784 # 28x28
-input_size = 2 # Input size is determined later based on dataset and model
-hidden_size = 500 
-num_classes = 10
-num_epochs = 10
-batch_size = 100
-learning_rate = 0.001
+# full sklearn, full pytorch, pandas, matplotlib, numpy are all available
+# Ideally you do not need to pip install any other packages!
+# Avoid pip install requirement on the evaluation program side, if you use above packages and sub-packages of them, then that is fine!
 
+###### PART 1 ######-----------------------------------------------------------------------------------
 
-class ModifiedDataset(Dataset):
-  def __init__(self,given_dataset,shrink_percent=10):
-    self.given_dataset = given_dataset
-    self.shrink_percent = shrink_percent
-    
-  def __len__(self):
-    return len(self.given_dataset)
-
-  def __getitem__(self,idx):
-    img, lab = self.given_dataset[idx]
-
-    # print (type(img))
-    # print (img.shape)
-
-    img2 = transform_tensor_to_pil(img.squeeze())
-
-    # print (img2.size)
-    
-    new_w = int(img2.size[0]*(1-self.shrink_percent/100.0))
-    new_h = int(img2.size[1]*(1-self.shrink_percent/100.0))
-
-    # print (new_w, new_h)
-
-    img3 = img2.resize((new_w,new_h))
-
-    # print (img3.size)
-
-    x = transform_pil_to_tensor(img3)
-
-    # print (x.shape)
-
-    return x,lab
-
-def get_dataloaders():
-    # Import FashionMNIST dataset 
-    train_data = torchvision.datasets.FashionMNIST(root='./data', 
-                                            train=True, 
-                                        transform=transforms.ToTensor(),  
-                                            download=True)
-    test_data = torchvision.datasets.FashionMNIST(root='./data', 
-                                            train=False, 
-                                            transform=transforms.ToTensor()) 
-
-
-    mod_train_data = ModifiedDataset(train_data)
-    mod_test_data = ModifiedDataset(test_data)
-
-    print (train_data[0][0].shape)
-    print (mod_train_data[0][0].shape)
-
-    train_dataloader = DataLoader(mod_train_data, batch_size=batch_size)
-    test_dataloader = DataLoader(mod_test_data, batch_size=batch_size)
-
-    for x, y in test_dataloader:
-        print(f"Shape of x [N, C, H, W]: {x.shape}")
-        print(f"Shape of y: {y.shape} {y.dtype}")
-        break
-
-    return train_dataloader, test_dataloader
-
-class ConfigNeuralNet(nn.Module):
-    def __init__(self, config, fc_size, num_classes):
-        super(ConfigNeuralNet, self).__init__()
-        self.layers = nn.Sequential(config)
-        # self.layers = nn.ModuleList()
-        # for (in_channels, out_channels, kernel_size, stride, padding) in config:
-        #   self.layers.append(nn.Conv2d(
-        #         in_channels=in_channels,              
-        #         out_channels=out_channels,            
-        #         kernel_size=kernel_size,              
-        #         stride=stride,                   
-        #         padding=padding,                  
-        #     ),     
-        #     )
-        self.fc = nn.Linear(fc_size, num_classes)
-        self.softmax = nn.Softmax(dim=1) 
-
-    def return_dims(self,x):
-        x = self.layers(x)
-        return x.shape
-
-    def forward(self, x):
-        x = self.layers(x)
-        x = x.view(x.size(0), -1)
-        # print(x.shape)
-        x = self.fc(x)
-        # print(x.shape)
-        out = self.softmax(x)
-        # print(out.shape)
-        return out
-
-# My Cross Entropy Function
-def softmax(x):
-    exp_x = torch.exp(x)
-    sum_x = torch.sum(exp_x, dim=1, keepdim=True)
-    return exp_x/sum_x
-
-def log_softmax(x):
-    return torch.log(softmax(x))
-
-def my_loss(output, target):
-    num_examples = target.shape[0]
-    batch_size = output.shape[0]
-    output = log_softmax(output)
-    output = output[range(batch_size), target]
-    return - torch.sum(output)/num_examples
-
-
-# Function to determine input size
-def determine_size(data_loader, config):
-    fc_size = 20000
-    model = ConfigNeuralNet(config, fc_size, num_classes).to(device)
-
-    for x, _ in data_loader:
-      data_point = x[0].to(device)
-      dims = model.return_dims(data_point)
-      print(dims)
-      print(dims[0]*dims[1]*dims[2])
-      return dims[0]*dims[1]*dims[2]
-
-def train(model, train_dataloader, optimizer, criterion, num_epochs):
-    n_total_steps = len(train_dataloader)
-    for epoch in range(num_epochs):
-        for i, (images, labels) in enumerate(train_dataloader):  
-            # origin shape: [100, 1, 28, 28]
-            # resized: [100, 784]
-            # images = images.reshape(-1,28*28).to(device)
-            # images = images.reshape(1,1,100,28*28).to(device)
-            # print(images.shape)
-            images = images.to(device)
-            labels = labels.to(device)
-            # Forward pass
-            outputs = model(images)
-            loss = criterion(outputs, labels)
-            # Backward and optimize
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step() 
-
-            if (i+1) % 100 == 0:
-                print (f'Epoch [{epoch+1}/{num_epochs}], Step[{i+1}/{n_total_steps}], Loss: {loss.item():.4f}') 
-
-
-def test(model, test_dataloader):
-    with torch.no_grad():
-        n_correct = 0
-        n_samples = 0
-        for images, labels in test_dataloader:
-            # images = images.reshape(-1, 28*28).to(device)
-            images = images.to(device)
-            labels = labels.to(device)
-            outputs = model(images)
-            # max returns (value ,index)
-            _, predicted = torch.max(outputs.data, 1)
-            n_samples += labels.size(0)
-            n_correct += (predicted == labels).sum().item() 
-            y_true = torch.Tensor.cpu(labels)
-            y_pred = torch.Tensor.cpu(predicted)
-            # print(y_true, y_pred)
-            
-        acc = 100.0 * n_correct / n_samples
-        print(classification_report(y_true, y_pred))
-        print(f'Accuracy of the network on the 10000 test images: {acc} %') 
-
-
-def evaluate():
-    train_dataloader, test_dataloader = get_dataloaders()
-
-    config = [(1,10,(3,3),1,'same'), (10,3,(5,5),1,'same'), (3,1,(7,7),1,'same')]
-
-    ordered_dict = OrderedDict()
-    index = 1
-
-    for (in_channels, out_channels, kernel_size, stride, padding) in config:
-        name = 'conv'+str(index)
-        index = index+1
-        ordered_dict[name] = nn.Conv2d(
-            in_channels=in_channels,              
-            out_channels=out_channels,            
-            kernel_size=kernel_size,              
-            stride=stride,                   
-            padding=padding,                  
-        )
-    print(ordered_dict)
-    config = ordered_dict
-    fc_size = determine_size(test_dataloader, config)
-    model = ConfigNeuralNet(config, fc_size, num_classes).to(device)
-    # model = NeuralNet(20000, num_classes).to(device)
-    # Loss and optimizer
-    # criterion = nn.CrossEntropyLoss()
-    criterion = my_loss
-    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate) 
-    print(model)
-    train(model, train_dataloader, optimizer, criterion, num_epochs)
-    test(model, test_dataloader)
-
-
-
-
-# """
-# PLease Note: The main concept that I tried to use was gto pass a sample through the forward funciton, return the size and then use that 
-# to create the fully connected layer. I think the concept is there but due to lack of time I have not been able to smoothen out the typos 
-# and making it match so that it runs end to end. Kindly read the code manually.
-# """
-# # Define a neural network YOUR ROLL NUMBER (all small letters) should prefix the classname
-# # This function is used to programatically identify the size of the fully connected layer and return it
-# class test_CNN(nn.Module):
-#     def __init__(self):
-#         super(test_CNN, self).__init__()
-#         self.conv1 = nn.Sequential(         
-#             nn.Conv2d(
-#                 in_channels=1,              
-#                 out_channels=16,            
-#                 kernel_size=5,              
-#                 stride=1,                   
-#                 padding=2,                  
-#             ),                              
-#             nn.ReLU(),                      
-#             nn.MaxPool2d(kernel_size=2),    
-#         )
-#         self.conv2 = nn.Sequential(         
-#             nn.Conv2d(16, 32, 5, 1, 2),     
-#             nn.ReLU(),                      
-#             nn.MaxPool2d(2),                
-#         )
-#         # fully connected layer, output 10 classes
-#         # self.out = nn.Linear(32 * 7 * 7, 10)
-#     def forward(self, x):
-#         x = self.conv1(x)
-#         x = self.conv2(x)
-#         # flatten the output of conv2 to (batch_size, 32 * 7 * 7)
-#         x = x.view(x.size(0), -1)
-#         print("PRINTING THE SIZE")
-#         print(x.shape) 
-#         return x.shape[1]      
-#         # output = self.out(x)
-#         # return output, x    # return x for visualization
-
-# class cs19b012_CNN(nn.Module):
-#     def __init__(self):
-#         super(cs19b012_CNN, self).__init__()
-#         self.conv1 = nn.Sequential(         
-#             nn.Conv2d(
-#                 in_channels=1,              
-#                 out_channels=16,            
-#                 kernel_size=5,              
-#                 stride=1,                   
-#                 padding=2,                  
-#             ),                              
-#             nn.ReLU(),                      
-#             nn.MaxPool2d(kernel_size=2),    
-#         )
-#         self.conv2 = nn.Sequential(         
-#             nn.Conv2d(16, 32, 5, 1, 2),     
-#             nn.ReLU(),                      
-#             nn.MaxPool2d(2),                
-#         )
-#         # fully connected layer, output 10 classes
-#         self.out = nn.Linear(32 * 7 * 7, 10)
-#     def forward(self, x):
-#         x = self.conv1(x)
-#         x = self.conv2(x)
-#         # flatten the output of conv2 to (batch_size, 32 * 7 * 7)
-#         x = x.view(x.size(0), -1)       
-#         output = self.out(x)
-#         return output, x    # return x for visualization
-
-# class cs19b012_CNN(nn.Module):
-#     def __init__(self, sample_data):
-#         super(cs19b012_CNN, self).__init__()
-#         self.conv1 = nn.Sequential(         
-#             nn.Conv2d(
-#                 in_channels=1,              
-#                 out_channels=16,            
-#                 kernel_size=5,              
-#                 stride=1,                   
-#                 padding=2,                  
-#             ),                              
-#             nn.ReLU(),                      
-#             nn.MaxPool2d(kernel_size=2),    
-#         )
-#         self.conv2 = nn.Sequential(         
-#             nn.Conv2d(16, 32, 5, 1, 2),     
-#             nn.ReLU(),                      
-#             nn.MaxPool2d(2),                
-#         )
-#         # fully connected layer, output 10 classes
-#         test_model = test_CNN()
-#         fc_size = test_model.forward(sample_data)
-#         # print(sample_data)
-#         self.out = nn.Linear(32 * 7 * 7, 10)
-#     def forward(self, x):
-#         x = self.conv1(x)
-#         x = self.conv2(x)
-#         # flatten the output of conv2 to (batch_size, 32 * 7 * 7)
-#         x = x.view(x.size(0), -1)
-#         # print("PRINTING THE SIZE")
-#         # print(x.shape)       
-#         output = self.out(x)
-#         return output, x    # return x for visualization
-
-# def train(cnn, loss_func, optimizer, train_data_loader, num_epochs):
-#     # num_epochs = 10
-#     cnn.train()
-        
-#     # Train the model
-#     total_step = len(train_data_loader)
-        
-#     for epoch in range(num_epochs):
-#         for i, (images, labels) in enumerate(train_data_loader):
-            
-#             # gives batch data, normalize x when iterate train_loader
-#             b_x = Variable(images)   # batch x
-#             b_y = Variable(labels)   # batch y
-#             output = cnn(b_x)[0]               
-#             loss = loss_func(output, b_y)
-            
-#             # clear gradients for this training step   
-#             optimizer.zero_grad()           
-            
-#             # backpropagation, compute gradients 
-#             loss.backward()    
-#             # apply gradients             
-#             optimizer.step()                
-            
-#             if (i+1) % 100 == 0:
-#                 print ('Epoch [{}/{}], Step [{}/{}], Loss: {:.4f}' 
-#                        .format(epoch + 1, num_epochs, i + 1, total_step, loss.item()))
-#             pass
-        
-#         pass
-    
-    
-#     pass
-#     # PATH = './saved_models/FMNIST_model.pth'
-#     # torch.save(cnn.state_dict(), PATH)
-
-# # sample invocation torch.hub.load(myrepo,'get_model',train_data_loader=train_data_loader,n_epochs=5, force_reload=True)
-# def get_model(train_data_loader=None, n_epochs=10):
-#     sample_data = None
-#     for test_images, test_labels in train_data_loader:  
-#         sample_image = test_images[0]    # Reshape them according to your needs.
-#         sample_data = sample_image
-    
-#     model = cs19b012_CNN(sample_data)
-#     loss_func = nn.CrossEntropyLoss()   
-#     optimizer = optim.Adam(model.parameters(), lr = 0.01)   
-#     # return cnn, loss_func, optimizer
-#     train(model, loss_func, optimizer, train_data_loader, n_epochs)
-
-
-#   # Use softmax and cross entropy loss functions
-#   # set model variable to proper object, make use of train_data
+from sklearn.datasets import make_blobs, make_circles
+def get_data_blobs(n_points=100):
+  # write your code here
+  # Refer to sklearn data sets
   
-#     print ('Returning model... (rollnumber: cs19b012)')
+  X, y = make_blobs(n_samples=n_points, centers=3, n_features=2,random_state=0)
+  return X,y
+
+def get_data_circles(n_points=100):
+  # write your code here
+  # Refer to sklearn data sets
+  X, y = make_circles(n_samples=n_points, random_state=0, factor=0.8)
+  return X,y
+
+def get_data_mnist():
+  pass
+  # write your code here
+  # Refer to sklearn data sets
+  X,y = None
+  # write your code ...
+  return X,y
+
+def build_kmeans(X=None,k=10):
+  pass
+  # k is a variable, calling function can give a different number
+  # Refer to sklearn KMeans method
+  km = None # this is the KMeans object
+  # write your code ...
+  return km
+
+def assign_kmeans(km=None,X=None):
+  pass
+  # For each of the points in X, assign one of the means
+  # refer to predict() function of the KMeans in sklearn
+  # write your code ...
+  ypred = None
+  return ypred
+
+def compare_clusterings(ypred_1=None,ypred_2=None):
+  pass
+  # refer to sklearn documentation for homogeneity, completeness and vscore
+  h,c,v = 0,0,0 # you need to write your code to find proper values
+  return h,c,v
+
+###### PART 2 ######-------------------------------------------------------------------------------------
+
+def build_lr_model(X=None, y=None):
+  pass
+  lr_model = None
+  # write your code...
+  # Build logistic regression, refer to sklearn
+  return lr_model
+
+def build_rf_model(X=None, y=None):
+  pass
+  rf_model = None
+  # write your code...
+  # Build Random Forest classifier, refer to sklearn
+  return rf_model
+
+def get_metrics(model=None,X=None,y=None):
+  pass
+  # Obtain accuracy, precision, recall, f1score, auc score - refer to sklearn metrics
+  acc, prec, rec, f1, auc = 0,0,0,0,0
+  # write your code here...
+  return acc, prec, rec, f1, auc
+
+def get_paramgrid_lr():
+  # you need to return parameter grid dictionary for use in grid search cv
+  # penalty: l1 or l2
+  lr_param_grid = None
+  # refer to sklearn documentation on grid search and logistic regression
+  # write your code here...
+  return lr_param_grid
+
+def get_paramgrid_rf():
+  # you need to return parameter grid dictionary for use in grid search cv
+  # n_estimators: 1, 10, 100
+  # criterion: gini, entropy
+  # maximum depth: 1, 10, None  
+  rf_param_grid = None
+  # refer to sklearn documentation on grid search and random forest classifier
+  # write your code here...
+  return rf_param_grid
+
+def perform_gridsearch_cv_multimetric(model=None, param_grid=None, cv=5, X=None, y=None, metrics=['accuracy','roc_auc']):
   
-#     return model
+  # you need to invoke sklearn grid search cv function
+  # refer to sklearn documentation
+  # the cv parameter can change, ie number of folds  
+  
+  # metrics = [] the evaluation program can change what metrics to choose
+  
+  grid_search_cv = None
+  # create a grid search cv object
+  # fit the object on X and y input above
+  # write your code here...
+  
+  # metric of choice will be asked here, refer to the-scoring-parameter-defining-model-evaluation-rules of sklearn documentation
+  
+  # refer to cv_results_ dictonary
+  # return top 1 score for each of the metrics given, in the order given in metrics=... list
+  
+  top1_scores = []
+  
+  return top1_scores
 
-# # sample invocation torch.hub.load(myrepo,'get_model_advanced',train_data_loader=train_data_loader,n_epochs=5, force_reload=True)
+###### PART 3 ######-------------------------------------------------------------------
 
-# class MyModule(nn.Module):
-#     def __init__(self, config, sample_data):
-#         super(MyModule, self).__init__()
-#         self.layers = nn.ModuleList()
-#         for (in_channels, out_channels, kernel_size, stride, padding) in config:
-#           self.layers.append(nn.Conv2d(
-#                 in_channels=in_channels,              
-#                 out_channels=out_channels,            
-#                 kernel_size=kernel_size,              
-#                 stride=stride,                   
-#                 padding=padding,                  
-#             ),     
-#             )
-#         # self.linears = nn.ModuleList([nn.Linear(10, 20) for _ in range(10)])
-#         self.linear = nn.Linear(self.get_fc_size(sample_data),10)
-
-#     def get_fc_size(self, x):
-#         x = self.layers(x)
-#         x = x.view(x.size(0), -1)
-#         return x.shape
-
-#     def forward(self, x, indices):
-#         x = self.layers[indices](x) 
-#         x = x.view(x.size(0), -1)
-#         print("print the size", x.shape)
-#         x = self.linear(x)
-#         return x
-
-# def get_model_advanced(train_data_loader=None, n_epochs=10,lr=1e-4,config=None):
-#     for test_images, test_labels in train_data_loader:  
-#         sample_image = test_images[0]    # Reshape them according to your needs.
-#         sample_data = sample_image
-#         break
-#     model = MyModule(config, sample_data)    
-#     print ('Returning model... (rollnumber: cs19b012)')
-#     return model
-
-#     # sample invocation torch.hub.load(myrepo,'test_model',model1=model,test_data_loader=test_data_loader,force_reload=True)
-# def test_model(model1=None, test_data_loader=None):
-
-#     accuracy_val, precision_val, recall_val, f1score_val = 0, 0, 0, 0
-#     for image, label in test_data_loader:
-#         image = Variable(image)
-#         label = Variable(label)
-#         output = model1(image)
-#         _, predicted = torch.max(output.data, 1)
-#         accuracy_val += (predicted == label).sum().item()
-#         precision_val += precision_score(label, predicted, average='macro')
-#         recall_val += recall_score(label, predicted, average='macro')
-#         f1score_val += f1_score(label, predicted, average='macro')
-#     # precision_val, recall_val = precision_recall(preds, target, average='macro', num_classes=3)
+class MyNN(nn.Module):
+  def __init__(self,inp_dim=64,hid_dim=13,num_classes=10):
+    super(MyNN,self)
     
-#     print ('Returning metrics... (rollnumber: cs19b012)')
+    self.fc_encoder = None # write your code inp_dim to hid_dim mapper
+    self.fc_decoder = None # write your code hid_dim to inp_dim mapper
+    self.fc_classifier = None # write your code to map hid_dim to num_classes
     
-#     return accuracy_val, precision_val, recall_val, f1score_val
+    self.relu = None #write your code - relu object
+    self.softmax = None #write your code - softmax object
+    
+  def forward(self,x):
+    x = None # write your code - flatten x
+    x_enc = self.fc_encoder(x)
+    x_enc = self.relu(x_enc)
+    
+    y_pred = self.fc_classifier(x_enc)
+    y_pred = self.softmax(y_pred)
+    
+    x_dec = self.fc_decoder(x_enc)
+    
+    return y_pred, x_dec
+  
+  # This a multi component loss function - lc1 for class prediction loss and lc2 for auto-encoding loss
+  def loss_fn(self,x,yground,y_pred,xencdec):
+    
+    # class prediction loss
+    # yground needs to be one hot encoded - write your code
+    lc1 = None # write your code for cross entropy between yground and y_pred, advised to use torch.mean()
+    
+    # auto encoding loss
+    lc2 = torch.mean((x - xencdec)**2)
+    
+    lval = lc1 + lc2
+    
+    return lval
+    
+def get_mynn(inp_dim=64,hid_dim=13,num_classes=10):
+  mynn = MyNN(inp_dim,hid_dim,num_classes)
+  mynn.double()
+  return mynn
+
+def get_mnist_tensor():
+  # download sklearn mnist
+  # convert to tensor
+  X, y = None, None
+  # write your code
+  return X,y
+
+def get_loss_on_single_point(mynn=None,x0,y0):
+  y_pred, xencdec = mynn(x0)
+  lossval = mynn.loss_fn(x0,y0,y_pred,xencdec)
+  # the lossval should have grad_fn attribute set
+  return lossval
+
+def train_combined_encdec_predictor(mynn=None,X,y, epochs=11):
+  # X, y are provided as tensor
+  # perform training on the entire data set (no batches etc.)
+  # for each epoch, update weights
+  
+  optimizer = optim.SGD(mynn.parameters(), lr=0.01)
+  
+  for i in range(epochs):
+    optimizer.zero_grad()
+    ypred, Xencdec = mynn(X)
+    lval = mynn.loss_fn(X,y,ypred,Xencdec)
+    lval.backward()
+    optimzer.step()
+    
+  return mynn
