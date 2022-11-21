@@ -142,6 +142,13 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 
+from sklearn.model_selection import train_test_split
+
+X,y = load_digits(return_X_y=True)
+X = torch.tensor(X)
+y = torch.tensor(y)
+Xtrain,Xtest,ytrain,ytest = train_test_split(X,y,test_size=0.3)
+
 def softmax(x):
       exp_x = torch.exp(x)
       # sum_x = torch.sum(exp_x, dim=1, keepdim=True)
@@ -226,7 +233,7 @@ def get_loss_on_single_point(mynn,x0,y0):
   # the lossval should have grad_fn attribute set
   return lossval
 
-def train_combined_encdec_predictor(mynn=None,X=X,y=y, epochs=11):
+def train_combined_encdec_predictor(mynn=None,X=Xtrain,y=ytrain, epochs=11):
   # X, y are provided as tensor
   # perform training on the entire data set (no batches etc.)
   # for each epoch, update weights
